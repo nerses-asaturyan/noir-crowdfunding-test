@@ -77,15 +77,6 @@ export function readData(): Record<string, any> {
 }
 
 /**
- * Generates a unique identifier using random bytes.
- * @returns A bigint identifier.
- */
-export function generateId(): bigint {
-  const bytes = crypto.randomBytes(24);
-  return BigInt('0x' + bytes.toString('hex'));
-}
-
-/**
  * Retrieves and logs public logs using the provided blockchain interface.
  * @param pxe - An object with blockchain methods.
  * @returns A promise that resolves with an array of logs.
@@ -96,15 +87,6 @@ export async function publicLogs(pxe: any): Promise<any[]> {
   const { logs } = await pxe.getPublicLogs(logFilter);
   console.log('Public logs: ', logs);
   return logs;
-}
-
-/**
- * Converts a comma-separated string of numbers to a Uint8Array.
- * @param str - The input string.
- * @returns A Uint8Array representing the numbers.
- */
-export function stringToUint8Array(str: string): Uint8Array {
-  return new Uint8Array(str.split(',').map((num) => Number(num.trim())));
 }
 
 /**
@@ -129,67 +111,6 @@ export async function simulateBlockPassing(
       .wait();
     console.log(`Simulated block ${await pxe.getBlockNumber()} passed.`);
   }
-}
-
-export async function connectPXE(
-  port: number,
-  options: {
-    host?: string;
-    protocol?: 'http' | 'https';
-  } = {},
-): Promise<PXE> {
-  const host = process.env.PXE_HOST ?? options.host ?? DEFAULT_HOST;
-  const protocol =
-    options.protocol ?? (process.env.PXE_HTTPS === 'true' ? 'https' : 'http');
-  const clientLib = protocol === 'https' ? https : http;
-
-  await new Promise<void>((resolve, reject) => {
-    const req = clientLib.request(
-      {
-        hostname: host,
-        port,
-        method: 'HEAD',
-        path: '/',
-        timeout: 2000,
-        ...(protocol === 'https' ? { rejectUnauthorized: false } : {}),
-      },
-      (res) => {
-        res.destroy();
-        resolve();
-      },
-    );
-    req.once('error', reject);
-    req.once('timeout', () => {
-      req.destroy();
-      reject(new Error('Timeout during port check'));
-    });
-    req.end();
-  });
-  const url = `${protocol}://${host}:${port}`;
-  console.log(`Connecting to PXE on: ${url}`);
-  const client = createPXEClient(url);
-  await waitForPXE(client);
-  console.log(`Connected to PXE: ${url}`);
-  return client;
-}
-
-/**
- * Returns a connected AztecNode client.
- * Uses PXE_URL from env or falls back to default.
- */
-export async function getAztecNode(o?: string | number): Promise<AztecNode> {
-  const DEFAULT_PXE_URL = 'http://localhost:8080';
-  const s = String(o ?? ''),
-    base = process.env.PXE_URL ?? DEFAULT_PXE_URL;
-  const url =
-    o == null
-      ? base
-      : /^\d+$/.test(s)
-        ? `http://localhost:${s}`
-        : /^https?:\/\//.test(s)
-          ? s
-          : `http://${s}`;
-  return createAztecNodeClient(url);
 }
 
 export async function logPXERegistrations(pxes: PXE[]): Promise<void> {
