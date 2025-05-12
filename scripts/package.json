@@ -1,0 +1,25 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aztec/accounts": "^0.86.0",
+    "@aztec/aztec.js": "^0.86.0",
+    "@aztec/noir-contracts.js": "^0.86.0",
+    "@aztec/pxe": "^0.86.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "prettier": "^3.5.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
