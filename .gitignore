@@ -1,8 +1,7 @@
 crowdfunding/target/
 crowdfunding/codegenCache.json
-
 scripts/data.json
-
 scripts/node_modules/
 scripts/store/
 scripts/package-lock.json
+router/target

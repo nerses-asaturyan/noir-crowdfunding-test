@@ -23,7 +23,7 @@ pub contract Crowdfunding {
         utils::comparison::Comparator,
     };
     use dep::uint_note::uint_note::UintNote;
-    // use router::utils::privately_check_timestamp;
+    use router::utils::privately_check_timestamp;
     use std::meta::derive;
     use token::Token;
     // docs:end:all-deps
@@ -66,7 +66,7 @@ pub contract Crowdfunding {
         // 1) Check that the deadline has not passed --> we do that via the router contract to conceal which contract
         // is performing the check.
         // docs:start:call-check-deadline
-        // privately_check_timestamp(Comparator.LT, config.deadline, &mut context);
+        privately_check_timestamp(Comparator.LT, config.deadline, &mut context);
         // docs:end:call-check-deadline
 
         // docs:start:do-transfer
