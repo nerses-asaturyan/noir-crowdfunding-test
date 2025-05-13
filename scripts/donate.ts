@@ -2,6 +2,7 @@ import {
   AztecAddress,
   Contract,
   Fr,
+  getWallet,
   SponsoredFeePaymentMethod,
   Wallet,
 } from '@aztec/aztec.js';
@@ -11,6 +12,7 @@ import { deriveSigningKey } from '@aztec/stdlib/keys';
 import { readData, getPXEs } from './utils.ts';
 import { getSponsoredFPCInstance } from './fpc.ts';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
+import { SingleKeyAccountContract } from '@aztec/accounts/single_key';
 
 const CrowdfundingContractArtifact = CrowdfundingContract.artifact;
 
@@ -30,9 +32,25 @@ async function main(): Promise<void> {
   );
   const senderWallet = await schnorWallet.getWallet();
 
+  let operatorSecertKey = Fr.fromString(data.operatorSecertKey);
+  let operatorSalt = Fr.fromString(data.operatorSalt);
+  const operatorAccount = await getSchnorrAccount(
+    pxe2,
+    operatorSecertKey,
+    deriveSigningKey(operatorSecertKey),
+    operatorSalt,
+  );
+  const operatorWallet = await operatorAccount.getWallet();
+
   const sender: string = senderWallet.getAddress().toString();
   console.log(`Using wallet: ${sender}`);
 
+  const crowdFundingContract = new SingleKeyAccountContract(data.crowdFundingSecretKey)
+  const crowdFundingWallet = await getWallet(pxe2, AztecAddress.fromString(data.crowdFundingContractAddress), crowdFundingContract);
+
+  await crowdFundingWallet.registerSender(senderWallet.getAddress());
+  await crowdFundingWallet.registerSender(operatorWallet.getAddress());  
+  
   const token = data.tokenAddress;
   const amount = 23n;
 
@@ -43,6 +61,7 @@ async function main(): Promise<void> {
     senderWallet as Wallet,
   );
 
+  // from donor to crowdfunding contract
   const transfer = asset
     .withWallet(senderWallet)
     .methods.transfer_in_private(
@@ -52,6 +71,7 @@ async function main(): Promise<void> {
       0n,
     );
 
+  // authorize crowdfunding contract to spend tokens
   const witness = await senderWallet.createAuthWit({
     caller: AztecAddress.fromString(data.crowdFundingContractAddress),
     action: transfer,
@@ -69,21 +89,21 @@ async function main(): Promise<void> {
     senderWallet,
   );
 
+  // donate to crowdfunding contract from donor
   const tx = await contract.methods
     .donate(amount)
     .send({ authWitnesses: [witness], fee: { paymentMethod } })
     .wait();
 
   const txEffect = await pxe1.getTxEffect(tx.txHash);
-  console.log('TxEffect: ', txEffect.data.privateLogs);
 
-  console.log('tx : ', tx);
   console.log(
     `private balance of sender ${senderWallet.getAddress()}: `,
     await asset.methods
       .balance_of_private(senderWallet.getAddress())
       .simulate(),
   );
+
 }
 
 main().catch((err: any) => {

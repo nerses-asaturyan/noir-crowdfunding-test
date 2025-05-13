@@ -1,7 +1,9 @@
 import {
+  AccountWallet,
   AztecAddress,
   Contract,
   Fr,
+  getWallet,
   SponsoredFeePaymentMethod,
   Wallet,
 } from '@aztec/aztec.js';
@@ -12,10 +14,14 @@ import { readData, getPXEs } from './utils.ts';
 import { getSponsoredFPCInstance } from './fpc.ts';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
 import { computePartialAddress } from '@aztec/stdlib/contract';
+import { getSingleKeyAccountContractArtifact } from '@aztec/accounts/single_key/lazy';
+import { SingleKeyAccountContract } from '@aztec/accounts/single_key';
 
 const CrowdfundingContractArtifact = CrowdfundingContract.artifact;
 
 async function main(): Promise<void> {
+
+  // pxe2 is operator
   const [pxe1, pxe2, pxe3] = await getPXEs(['pxe1', 'pxe2', 'pxe3']);
   const sponseredFPC = await getSponsoredFPCInstance();
   const paymentMethod = new SponsoredFeePaymentMethod(sponseredFPC.address);
@@ -30,10 +36,8 @@ async function main(): Promise<void> {
     operatorSalt,
   );
 
-//   await pxe2.registerAccount(
-//     Fr.fromString(data.crowdFundingSecretKey),
-//     Fr.fromString(data.crowdFundingPartialAddress),
-//   );
+
+// operator wallet
   const senderWallet = await schnorWallet.getWallet();
 
   const sender: string = senderWallet.getAddress().toString();
@@ -53,6 +57,13 @@ async function main(): Promise<void> {
     `private balance of sender ${senderWallet.getAddress()}: `,
     await asset.methods
       .balance_of_private(senderWallet.getAddress())
+      .simulate(),
+  );
+
+  console.log(
+    `private balance of contribution contract ${AztecAddress.fromString(data.crowdFundingContractAddress)}: `,
+    await asset.withWallet(senderWallet).methods
+      .balance_of_private(AztecAddress.fromString(data.crowdFundingContractAddress))
       .simulate(),
   );
   const contract = await Contract.at(
