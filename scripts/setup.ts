@@ -33,7 +33,8 @@ async function main(): Promise<void> {
 
   const paymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address);
 
-  //   donor wallet in PXE 1
+  // Setup donor wallet in PXE 1
+  // Generate random secret key and salt for the donor account
   let secretKey = Fr.random();
   let salt = Fr.random();
   let schnorrAccount = await getSchnorrAccount(
@@ -46,7 +47,8 @@ async function main(): Promise<void> {
   let donorWallet = await schnorrAccount.getWallet();
   let donorAddress = donorWallet.getAddress();
 
-  //   operator wallet in PXE 2
+  // Setup operator wallet in PXE 2
+  // Generate random secret key and salt for the operator account
   let secretKey2 = Fr.random();
   let salt2 = Fr.random();
   let schnorrAccount2 = await getSchnorrAccount(
@@ -60,7 +62,8 @@ async function main(): Promise<void> {
   let operatorWallet = await schnorrAccount2.getWallet();
   let operatorAddress = operatorWallet.getAddress();
 
-  // wallet 3 for deployment
+  // Setup deployer wallet in PXE 3
+  // Generate random secret key and salt for the deployer account
   let secretKey3 = Fr.random();
   let salt3 = Fr.random();
   let schnorrAccount3 = await getSchnorrAccount(
@@ -74,16 +77,17 @@ async function main(): Promise<void> {
   let deployer = await schnorrAccount3.getWallet();
   let deployerAddress = deployer.getAddress();
 
-  // mint token and trasnfer to donor and operator
+  // Deploy the token contract with initial parameters
   const token = await Contract.deploy(deployer, TokenContractArtifact, [
     deployer.getAddress(),
-    'DONATION',
-    'DNT',
-    18,
+    'DONATION',  // Token name
+    'DNT',       // Token symbol
+    18,          // Token decimals
   ])
     .send({ fee: { paymentMethod } })
     .deployed();
 
+  // Register the token contract with PXE 1 and 2
   await pxe1.registerContract({
     instance: token.instance,
     artifact: TokenContractArtifact,
@@ -94,11 +98,13 @@ async function main(): Promise<void> {
     artifact: TokenContractArtifact,
   });
 
+  // Register the deployer as a sender for both donor and operator wallets
   await donorWallet.registerSender(deployerAddress);
   await operatorWallet.registerSender(deployerAddress);
 
   console.log(`Token deployed at ${token.address.toString()}`);
 
+  // Mint initial token supply and distribute to donor and operator
   const amount = 2000n;
   console.log(`Minting ${amount} tokens...`);
   const contract3 = await Contract.at(
@@ -106,12 +112,15 @@ async function main(): Promise<void> {
     TokenContractArtifact,
     deployer,
   );
+  
+  // Mint tokens publicly to the deployer
   const mintTx = await contract3.methods
     .mint_to_public(deployer.getAddress(), amount)
     .send({ fee: { paymentMethod } })
     .wait();
   console.log(`Public mint successful in block ${mintTx.blockNumber}`);
 
+  // Transfer tokens privately to donor and operator (split equally)
   await contract3.methods
     .transfer_to_private(donorWallet.getAddress(), amount / 2n)
     .send({ fee: { paymentMethod } })
@@ -121,6 +130,7 @@ async function main(): Promise<void> {
     .send({ fee: { paymentMethod } })
     .wait();
 
+  // Get contract instances for donor and operator to check balances
   const contract1 = await Contract.at(
     AztecAddress.fromString(token.address.toString()),
     TokenContractArtifact,
@@ -132,6 +142,7 @@ async function main(): Promise<void> {
     operatorWallet,
   );
 
+  // Log private balances of donor and operator
   console.log(
     'donor private balance: ',
     await contract1.methods
@@ -146,6 +157,7 @@ async function main(): Promise<void> {
       .simulate(),
   );
 
+  // Save all important data (keys, addresses, etc.) for future use
   updateData({
     donorSecertKey: secretKey,
     donorSalt: salt,
@@ -159,6 +171,7 @@ async function main(): Promise<void> {
     tokenAddress: token.address.toString(),
   });
 
+  // Log all PXE registrations for verification
   await logPXERegistrations([pxe1, pxe2, pxe3]);
 }
 

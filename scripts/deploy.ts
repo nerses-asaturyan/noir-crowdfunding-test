@@ -7,6 +7,7 @@ import {
   ContractInstanceWithAddress,
   ContractArtifact,
   SponsoredFeePaymentMethod,
+  AztecAddress,
 } from '@aztec/aztec.js';
 import { CrowdfundingContract } from './Crowdfunding.ts';
 import { getPXEs, logPXERegistrations, readData, updateData } from './utils.ts';
@@ -32,7 +33,6 @@ async function main(): Promise<void> {
   );
   let deployerWallet = await schnorrAccount.getWallet();
 
-  // crowdFunding protocol deployment on PXE3
   const crowdFundingSecretKey = Fr.random();
   const { publicKeys: crowdFundingPublicKeys } = await deriveKeys(
     crowdFundingSecretKey,
@@ -58,7 +58,6 @@ async function main(): Promise<void> {
     .deployed();
   const crowdFundingPartialAddress = await crowdFundingContract.partialAddress;
 
-  //register contract in all PXEs
   await pxe1.registerContract({
     instance: crowdFundingContract.instance as ContractInstanceWithAddress,
     artifact: CrowdfundingContract.artifact as ContractArtifact,
@@ -69,11 +68,17 @@ async function main(): Promise<void> {
     artifact: CrowdfundingContract.artifact as ContractArtifact,
   });
 
+
+  // register the crowdfunding account in pxe2 as an account since there are public keys
+  await pxe2.registerAccount(crowdFundingSecretKey, crowdFundingPartialAddress);
+  await pxe2.registerSender(deployerWallet.getAddress());
+
   await pxe3.registerContract({
     instance: crowdFundingContract.instance as ContractInstanceWithAddress,
     artifact: CrowdfundingContract.artifact as ContractArtifact,
   });
 
+  // save data
   updateData({
     crowdFundingSecretKey: crowdFundingSecretKey,
     crowdFundingPublicKeys: crowdFundingPublicKeys,
